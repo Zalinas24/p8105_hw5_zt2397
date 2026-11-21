@@ -147,3 +147,40 @@ study_df |>
 ```
 
 Both groups start out at about the same level in week 1. Over the 8 weeks, the experimental group's observations go up steadily, while the control group stays pretty flat around 0 to 2. By week 8, almost every subject in the experimental group is higher than every subject in the control group, so it looks like the experimental arm had an effect over time.
+
+## Problem 3 (P3)
+
+
+### P3 Simulation Function
+
+```{r power_function}
+# function that simulates one dataset and saves the estimated mean and p-value from a t-test
+sim_power = function(mu, n = 30, sigma = 5) {
+  
+  x = rnorm(n, mean = mu, sd = sigma)
+  
+  t.test(x, mu = 0) |> 
+    broom::tidy() |> 
+    select(estimate, p.value)
+  
+}
+
+# testing the function once
+sim_power(mu = 0)
+```
+
+These numbers change every time the function runs because `rnorm()` draws a new random sample of 30 values each time. Since every sample is a little different, the estimated mean and p-value will be a little different too, even though the true mean stays the same. This is why we repeat the simulation 5,000 times instead of only running it once.
+
+### P3 Simulation (5,000 datasets per true mean)
+```{r power_simulation}
+# runs the function 5,000 times for each true mean from 0 to 6
+power_sim_results = 
+  expand_grid(
+    true_mu = 0:6,
+    iter = 1:5000
+  ) |> 
+  mutate(
+    estimate_df = map(true_mu, sim_power)
+  ) |> 
+  unnest(estimate_df)
+```
