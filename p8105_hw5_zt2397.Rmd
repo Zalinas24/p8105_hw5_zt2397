@@ -18,12 +18,16 @@ knitr::opts_chunk$set(
   fig.asp = 0.6,
   out.width = "90%"
 )
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+set.seed(1)
 ##This loads all of the initial information and tidyverse
 ```
 
 ## Problem 1
-
 ```{r}
+# function that gives each person a random birthday and checks if any two people share one
 bday_sim = function(n_room) {
   birthdays = sample(1:365, n_room, replace = TRUE)
   repeated_bday = length(unique(birthdays)) < n_room
@@ -32,6 +36,7 @@ bday_sim = function(n_room) {
 ```
 
 ```{r}
+# runs the function 10,000 times for each group size and averages the results to get the probability
 bday_sim_results = 
   expand_grid(
     group_size = 2:50,
@@ -47,6 +52,7 @@ bday_sim_results =
 ```
 
 ```{r}
+# plots the probability of a shared birthday by group size
 bday_sim_results |> 
   ggplot(aes(x = group_size, y = prob_shared)) + 
   geom_point() + 
@@ -58,3 +64,4 @@ bday_sim_results |>
   )
 ```
 
+As the group size increases, the probability of two people sharing a birthday goes up. With small groups the probability is low, but it passes 50% at around 23 people. By 50 people, the probability is close to 1. This is higher than I expected, since 23 people is a lot less than 365 days. It makes sense though, because with more people there are a lot more pairs of people who could share a birthday.
