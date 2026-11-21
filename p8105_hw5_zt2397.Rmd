@@ -150,6 +150,7 @@ Both groups start out at about the same level in week 1. Over the 8 weeks, the e
 
 ## Problem 3 (P3)
 
+In this problem I run a simulation to look at power in a one-sample t-test. I fix the sample size at 30 and the standard deviation at 5, and change the true mean from 0 to 6.
 
 ### P3 Simulation Function
 
@@ -160,8 +161,7 @@ sim_power = function(mu, n = 30, sigma = 5) {
   x = rnorm(n, mean = mu, sd = sigma)
   
   t.test(x, mu = 0) |> 
-    broom::tidy() |> 
-    select(estimate, p.value)
+    broom::tidy()
   
 }
 
@@ -172,7 +172,11 @@ sim_power(mu = 0)
 These numbers change every time the function runs because `rnorm()` draws a new random sample of 30 values each time. Since every sample is a little different, the estimated mean and p-value will be a little different too, even though the true mean stays the same. This is why we repeat the simulation 5,000 times instead of only running it once.
 
 ### P3 Simulation (5,000 datasets per true mean)
-```{r power_simulation}
+```{r}
+
+```
+
+```{r power_simulation, cache = TRUE}
 # runs the function 5,000 times for each true mean from 0 to 6
 power_sim_results = 
   expand_grid(
@@ -184,3 +188,56 @@ power_sim_results =
   ) |> 
   unnest(estimate_df)
 ```
+
+### P3 Power Plot
+
+```{r power_plot}
+# proportion of times the null was rejected for each true mean
+power_sim_results |> 
+  group_by(true_mu) |> 
+  summarize(
+    power = mean(p.value < 0.05)
+  ) |> 
+  ggplot(aes(x = true_mu, y = power)) + 
+  geom_point(color = "darkgreen") + 
+  geom_line(color = "darkgreen") + 
+  labs(
+    title = "Power of the t-test by true mean",
+    x = "True mean",
+    y = "Power (proportion of null rejected)"
+  )
+```
+
+As the true mean (effect size) gets bigger, the power goes up. When the true mean is 0, the null is only rejected about 5% of the time, which makes sense since that is the alpha level. Power increases quickly between 1 and 3, and by a true mean of about 4 the test rejects the null almost every time. So bigger effects are a lot easier to detect.
+
+### P3 Average Estimate Plot
+
+```{r estimate_plot}
+# average estimate across all samples and only in samples where the null was rejected
+power_sim_results |> 
+  group_by(true_mu) |> 
+  summarize(
+    all_samples = mean(estimate),
+    null_rejected = mean(estimate[p.value < 0.05])
+  ) |> 
+  pivot_longer(
+    all_samples:null_rejected,
+    names_to = "samples",
+    values_to = "avg_estimate"
+  ) |> 
+  ggplot(aes(x = true_mu, y = avg_estimate, color = samples)) + 
+  geom_point() + 
+  geom_line() + 
+  scale_color_manual(
+    values = c("all_samples" = "darkgreen", "null_rejected" = "blue"),
+    labels = c("All samples", "Null rejected")
+  ) + 
+  labs(
+    title = "Average estimated mean by true mean",
+    x = "True mean",
+    y = "Average estimated mean",
+    color = "Samples"
+  )
+```
+
+Across all samples, the average estimate is very close to the true mean. In the samples where the null was rejected, the average estimate is too high when the true mean is small (around 1 to 3). This is because when power is low, only the samples that happened to get a large estimate are significant, so those samples overestimate the true mean. When the true mean is 4 or higher, almost every sample rejects the null, so the average for the rejected samples ends up close to the true mean too.
