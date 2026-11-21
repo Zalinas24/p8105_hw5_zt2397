@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r} 
+```{r Tidyverse} 
 library(tidyverse)
 
 knitr::opts_chunk$set(
@@ -25,17 +25,26 @@ set.seed(1)
 ##This loads all of the initial information and tidyverse
 ```
 
-## Problem 1
-```{r}
+## Problem 1 (P1)
+
+### P1 Function for Shared Bdays
+
+```{r Share bd Function}
 # function that gives each person a random birthday and checks if any two people share one
 bday_sim = function(n_room) {
   birthdays = sample(1:365, n_room, replace = TRUE)
   repeated_bday = length(unique(birthdays)) < n_room
   repeated_bday
 }
+
+# testing the function with a small group and a large group to see if it wil work. 
+bday_sim(7)
+bday_sim(67)
 ```
 
-```{r}
+### P1 Function for Shared Bdays 10,000 
+
+```{r 10k function}
 # runs the function 10,000 times for each group size and averages the results to get the probability
 bday_sim_results = 
   expand_grid(
@@ -51,7 +60,9 @@ bday_sim_results =
   )
 ```
 
-```{r}
+### P1 Plot for Probability of Shared Bdays
+
+```{r shared bday plot}
 # plots the probability of a shared birthday by group size
 bday_sim_results |> 
   ggplot(aes(x = group_size, y = prob_shared)) + 
@@ -65,3 +76,74 @@ bday_sim_results |>
 ```
 
 As the group size increases, the probability of two people sharing a birthday goes up. With small groups the probability is low, but it passes 50% at around 23 people. By 50 people, the probability is close to 1. This is higher than I expected, since 23 people is a lot less than 365 days. It makes sense though, because with more people there are a lot more pairs of people who could share a birthday.
+
+## Problem 2 (P2)
+
+### P2 Exploring Data
+
+```{r look_at_files, message = FALSE}
+# lists all the files in the data folder
+list.files("data/")
+
+# shows what one participant's file looks like
+read_csv("data/con_01.csv") |> 
+  knitr::kable()
+```
+
+There are 20 files, 10 for the control arm (`con`) and 10 for the experimental arm (`exp`). Each file has one row with 8 columns, one for each week. The arm and subject ID are only in the file name, not in the data itself, so I need to pull them out of the file names. The weeks are also spread across columns, so I need to pivot the data longer to make it tidy.
+
+### P2 Tidying up Files
+
+```{r read files, message = FALSE}
+#added message = false to delte the long message printed in the knitted version. 
+
+# reads in every file, combines them, and tidies the arm, subject ID, and weekly observations
+study_df = 
+  tibble(
+    file_name = list.files("data/"),
+    path = str_c("data/", file_name)
+  ) |> 
+  mutate(data = map(path, read_csv)) |> 
+  unnest(data) |> 
+  mutate(file_name = str_remove(file_name, ".csv")) |> 
+  separate(file_name, into = c("arm", "subject_id"), sep = "_") |> 
+  mutate(arm = case_match(arm, "con" ~ "control", "exp" ~ "experimental")) |> 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    names_prefix = "week_",
+    values_to = "observation"
+  ) |> 
+  mutate(week = as.numeric(week)) |> 
+  select(arm, subject_id, week, observation)
+
+
+```
+
+```{r visual rows of data}
+# showed me the first few point in tthe tidy data
+study_df |> 
+  head() |> 
+  knitr::kable()
+```
+
+The final dataset has `r nrow(study_df)` rows, with one observation for each of the 20 subjects across 8 weeks.
+
+
+### P2 Spagheti Plot
+
+```{r spaghetti plot}
+# spaghetti plot with one line per subject, colored by arm
+study_df |> 
+  ggplot(aes(x = week, y = observation, group = interaction(arm, subject_id), color = arm)) + 
+  geom_line() + 
+    scale_color_manual(values = c("control" = "darkgreen", "experimental" = "blue")) + ## Changed the graph color
+  labs(
+    title = "Observations over time by subject",
+    x = "Week",
+    y = "Observation",
+    color = "Arm"
+  )
+```
+
+Both groups start out at about the same level in week 1. Over the 8 weeks, the experimental group's observations go up steadily, while the control group stays pretty flat around 0 to 2. By week 8, almost every subject in the experimental group is higher than every subject in the control group, so it looks like the experimental arm had an effect over time.
